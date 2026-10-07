@@ -1,0 +1,249 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>仕立料金ナビ</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@600;700&family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap">
+<style>
+/* Layout: 上から「大別 → 品名 → 料金」の一本道。結果カードだけを際立たせる */
+:root{
+  --bg:#f6f5f2; --surface:#ffffff; --fg:#22252b; --muted:#6b6f78; --line:#dcdad4;
+  --ai:#2c4a6e;        /* 藍：主アクセント */
+  --ai-soft:#e6edf5;
+  --kaigai:#1f7a8c; --kaigai-soft:#e3f3f5;
+  --kokunai:#a23a62; --kokunai-soft:#f8e8ef;
+  --warn:#9a6b00;
+  --display:"Shippori Mincho","Hiragino Mincho ProN","Yu Mincho",serif;
+  --body:"Zen Kaku Gothic New","Hiragino Sans","Yu Gothic",system-ui,sans-serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#16181d; --surface:#1f232a; --fg:#e9e8e4; --muted:#9a9ea7; --line:#343943;
+  --ai:#8fb0d9; --ai-soft:#25313f;
+  --kaigai:#6cc3d2; --kaigai-soft:#1b3237;
+  --kokunai:#e58bb0; --kokunai-soft:#3a2230; --warn:#e0b04a; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#16181d; --surface:#1f232a; --fg:#e9e8e4; --muted:#9a9ea7; --line:#343943;
+  --ai:#8fb0d9; --ai-soft:#25313f;
+  --kaigai:#6cc3d2; --kaigai-soft:#1b3237;
+  --kokunai:#e58bb0; --kokunai-soft:#3a2230; --warn:#e0b04a; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font-family:var(--body);font-size:15px;line-height:1.6;padding-inline:16px;padding-block:24px 48px}
+.wrap{max-width:760px;margin:0 auto;display:flex;flex-direction:column;gap:28px}
+header h1{font-family:var(--display);font-size:1.9rem;margin:0;letter-spacing:.06em;text-wrap:balance}
+header p{margin:4px 0 0;color:var(--muted);font-size:.85rem}
+.step-label{font-size:.78rem;letter-spacing:.12em;color:var(--muted);margin:0 0 10px;font-weight:700}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{font:inherit;font-weight:500;border:1px solid var(--line);background:var(--surface);color:var(--fg);padding:9px 16px;border-radius:6px;cursor:pointer;transition:background .12s,border-color .12s}
+.chip:hover{border-color:var(--ai)}
+.chip:focus-visible{outline:2px solid var(--ai);outline-offset:2px}
+.chip[aria-pressed="true"]{background:var(--ai);border-color:var(--ai);color:var(--surface)}
+.cat .chip{font-family:var(--display);font-size:1.05rem;font-weight:700;padding:10px 20px}
+.sub{font-size:.75rem;color:var(--muted);margin:14px 0 6px}
+.result{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:22px;display:flex;flex-direction:column;gap:18px}
+.result h2{font-family:var(--display);font-size:1.5rem;margin:0;display:flex;flex-wrap:wrap;align-items:baseline;gap:10px}
+.result h2 small{font-family:var(--body);font-size:.8rem;color:var(--muted);font-weight:400}
+.totals{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.tot{border-radius:8px;padding:14px 16px;min-width:0}
+.tot.k1{background:var(--kaigai-soft)} .tot.k2{background:var(--kokunai-soft)}
+.tot .lab{font-size:.8rem;font-weight:700;letter-spacing:.08em}
+.tot.k1 .lab{color:var(--kaigai)} .tot.k2 .lab{color:var(--kokunai)}
+.tot .val{font-size:2rem;font-weight:700;font-variant-numeric:tabular-nums;line-height:1.2;margin-top:2px}
+.tot .val .yen{font-size:1rem;margin-left:2px;font-weight:500}
+.tot .val .tax{font-size:.72rem;font-weight:500;color:var(--muted);margin-left:6px}
+.tot .incl{font-size:.95rem;font-variant-numeric:tabular-nums;margin-top:4px;padding-top:6px;border-top:1px solid var(--line)}
+.tot .incl b{font-size:1.25rem}
+.tot .val.na{font-size:1.1rem;color:var(--muted);font-weight:500}
+.guard{display:flex;justify-content:space-between;align-items:center;gap:12px;border-top:1px dashed var(--line);padding-top:14px;font-size:.9rem}
+.guard b{font-variant-numeric:tabular-nums;font-size:1.05rem}
+.guard span{color:var(--muted)}
+details{font-size:.88rem}
+summary{cursor:pointer;color:var(--ai);font-weight:500}
+.tbl{overflow-x:auto;margin-top:10px}
+table{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums}
+th,td{padding:6px 10px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}
+th:first-child,td:first-child{text-align:left}
+th{font-weight:500;color:var(--muted);font-size:.78rem}
+tr.sum td{font-weight:700;border-bottom:none}
+.note{font-size:.8rem;color:var(--muted);margin:0}
+.warn{font-size:.8rem;color:var(--warn);margin:0}
+.empty{color:var(--muted);text-align:center;padding:28px 12px;border:1px dashed var(--line);border-radius:10px}
+footer{font-size:.75rem;color:var(--muted)}
+@media (max-width:480px){.tot .val{font-size:1.55rem}.result{padding:16px}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>仕立料金ナビ</h1>
+    <p>たんす屋バザール 仕立料金表（2026年6月版・税抜）より</p>
+  </header>
+
+  <section>
+    <p class="step-label">① 大別を選ぶ</p>
+    <div class="chips cat" id="cats" role="group" aria-label="大別"></div>
+  </section>
+
+  <section>
+    <p class="step-label">② 品名を選ぶ</p>
+    <div id="items"></div>
+  </section>
+
+  <section id="out" aria-live="polite"></section>
+
+  <footer>金額は税抜（税込は消費税10%で計算）。合計は内訳の金額を足し上げて計算しています。</footer>
+</div>
+
+<script>
+// 料金データ（PDF「仕立料金202606」より）
+const DATA = [
+ { cat:"袷きもの",
+   groups:[
+    { cols:["湯のし（湯通し）","胴裏","八掛（華）","八掛（紬）","紋入れ"],
+      rows:[
+       ["訪問着",38000,80000,[4000,14000,0,0,0],56000,98000,15000],
+       ["附下",38000,68000,[1500,14000,16000,0,0],69500,99500,15000],
+       ["色無地",35000,60000,[1500,14000,0,0,14000],64500,89500,15000],
+       ["小紋",35000,60000,[1500,14000,16000,0,0],66500,91500,15000],
+       ["紬",35000,60000,[3500,14000,0,18000,0],70500,95500,15000],
+       ["喪服",36000,60000,[2000,14000,0,0,12000],64000,88000,15000]
+      ]},
+    { cols:["湯のし（湯通し）","裏地（男通し裏）"],
+      rows:[
+       ["羽織",36000,66000,[1500,20000],57500,87500,13000],
+       ["道行",36000,66000,[1500,20000],57500,87500,13000],
+       ["道中着",36000,69000,[1500,20000],57500,90500,13000],
+       ["着物衿",36000,69000,[1500,20000],57500,90500,13000],
+       ["男物",38000,60000,[3500,50000],91500,113500,15000],
+       ["男羽織",36000,60000,[3500,40000],79500,103500,13000]
+      ]}
+   ]},
+ { cat:"単衣きもの", note:"※色無地は１ツ紋",
+   groups:[
+    { cols:["湯のし（湯通し）","衿裏（絽 3,800）","居敷当（夏 8,000）","背伏","紋入れ"],
+      rows:[
+       ["訪問着",38000,80000,[4000,3500,6000,800,0],52300,94300,15000],
+       ["附下",38000,68000,[1500,3500,6000,800,0],49800,79800,15000],
+       ["色無地",35000,60000,[1500,3500,6000,800,14000],60800,85800,15000],
+       ["小紋",35000,60000,[1500,3500,6000,800,0],46800,70300,15000],
+       ["紬",35000,60000,[3500,3500,6000,800,0],48800,70300,15000],
+       ["喪服",36000,60000,[1500,3500,6000,800,12000],59800,83800,15000],
+       ["男物",38000,60000,[3500,0,0,0,0],41500,63500,15000]
+      ]}
+   ]},
+ { cat:"礼装着", note:"※黒留袖は５ツ紋、色留袖は３ツ紋",
+   groups:[
+    { cols:["湯のし（湯通し）","胴裏","比翼地","紋入れ"],
+      rows:[
+       ["振袖",40000,95000,[4000,22000,0,0],66000,121000,16000],
+       ["黒留袖",43000,110000,[4000,14000,22000,12000],95000,162000,16000],
+       ["色留袖（比翼付）",43000,110000,[4000,14000,22000,28000],111000,178000,16000],
+       ["色留袖（比なし）",38000,80000,[4000,14000,0,28000],84000,126000,15000]
+      ]}
+   ]},
+ { cat:"長襦袢",
+   groups:[
+    { cols:["半衿","衿芯","居敷当","えもん抜き","通し胴裏"],
+      rows:[
+       ["振袖襦袢",23000,46000,[3500,800,4500,1000,0],32800,52300,13000],
+       ["長襦袢",23000,39000,[3500,800,4500,1000,0],32800,45300,13000],
+       ["男襦袢",23000,42000,[7000,800,0,0,30000],60800,72800,13000]
+      ]}
+   ]},
+ { cat:"帯類", obi:true, note:"帯類は国内仕立のみ（海外合計の設定なし）",
+   items:[
+    { name:"袋帯", guard:12000, opts:[
+       {label:"かがり仕立", parts:[["かがり仕立",5000]], total:5000},
+       {label:"芯入仕立＋帯芯（綿）", parts:[["芯入仕立",8000],["帯芯（綿）",3000]], total:11000},
+       {label:"芯入仕立＋帯芯（夏）", parts:[["芯入仕立",8000],["帯芯（夏）",6000]], total:14000}]},
+    { name:"九寸なごや帯", guard:12000, opts:[
+       {label:"芯入仕立＋帯芯（綿）", parts:[["芯入仕立",10000],["帯芯（綿）",3000]], total:13000},
+       {label:"芯入仕立＋帯芯（夏）", parts:[["芯入仕立",10000],["帯芯（夏）",6000]], total:16000},
+       {label:"平仕立＋帯芯（綿）", parts:[["平仕立",14000],["帯芯（綿）",3000]], total:17000},
+       {label:"おそめ仕立＋帯芯（綿）", parts:[["おそめ仕立",16000],["帯芯（綿）",3000]], total:19000}]},
+    { name:"八寸なごや帯", guard:12000, opts:[
+       {label:"かがり仕立", parts:[["かがり仕立",4500]], total:4500},
+       {label:"平仕立", parts:[["平仕立",5000]], total:5000}]},
+    { name:"半巾帯・角帯", guard:12000, opts:[
+       {label:"かがり仕立", parts:[["かがり仕立",4000]], total:4000},
+       {label:"芯入仕立＋帯芯（綿）", parts:[["芯入仕立",12000],["帯芯（綿）",3000]], total:15000}]}
+   ]}
+];
+
+const yen = n => n.toLocaleString("ja-JP");
+const $ = id => document.getElementById(id);
+let state = {cat:0, item:0, opt:0};
+try{ const s = JSON.parse(localStorage.getItem("shitate-nav")||"null"); if(s && DATA[s.cat]) state = {...state, ...s}; }catch(e){}
+function save(){ try{ localStorage.setItem("shitate-nav", JSON.stringify(state)); }catch(e){} }
+
+function itemsOf(c){
+  const d = DATA[c];
+  if(d.obi) return d.items.map(i=>({name:i.name, obi:i}));
+  const list=[]; d.groups.forEach(g=>g.rows.forEach(r=>list.push({name:r[0], row:r, cols:g.cols})));
+  return list;
+}
+
+function chip(label, pressed, onClick){
+  const b=document.createElement("button"); b.type="button"; b.className="chip";
+  b.textContent=label; b.setAttribute("aria-pressed", pressed?"true":"false");
+  b.addEventListener("click", onClick); return b;
+}
+
+function render(){
+  const cats=$("cats"); cats.innerHTML="";
+  DATA.forEach((d,i)=>cats.appendChild(chip(d.cat, i===state.cat, ()=>{state={cat:i,item:0,opt:0};save();render();})));
+
+  const list=itemsOf(state.cat);
+  if(state.item>=list.length) state.item=0;
+  const box=$("items"); box.innerHTML="";
+  const row=document.createElement("div"); row.className="chips"; row.setAttribute("role","group"); row.setAttribute("aria-label","品名");
+  list.forEach((it,i)=>row.appendChild(chip(it.name, i===state.item, ()=>{state.item=i;state.opt=0;save();render();})));
+  box.appendChild(row);
+
+  const it=list[state.item];
+  if(it.obi){
+    if(state.opt>=it.obi.opts.length) state.opt=0;
+    const p=document.createElement("p"); p.className="sub"; p.textContent="仕立方法"; box.appendChild(p);
+    const r2=document.createElement("div"); r2.className="chips"; r2.setAttribute("role","group"); r2.setAttribute("aria-label","仕立方法");
+    it.obi.opts.forEach((o,i)=>r2.appendChild(chip(o.label, i===state.opt, ()=>{state.opt=i;save();render();})));
+    box.appendChild(r2);
+  }
+  renderResult(it);
+}
+
+function totalBox(cls, label, v){
+  return `<div class="tot ${cls}"><div class="lab">${label}</div>`+
+    (v==null ? `<div class="val na">設定なし</div>` : `<div class="val">${yen(v)}<span class="yen">円</span><span class="tax">税抜</span></div><div class="incl">税込 <b>${yen(Math.round(v*1.1))}</b>円</div>`)+`</div>`;
+}
+
+function renderResult(it){
+  const d=DATA[state.cat]; let html="";
+  if(it.obi){
+    const o=it.obi.opts[state.opt];
+    html+=`<h2>${it.name}<small>${d.cat}・${o.label}</small></h2>`;
+    html+=`<div class="totals">${totalBox("k1","海外合計",null)}${totalBox("k2","国内合計",o.total)}</div>`;
+    html+=`<div class="guard"><span>きららガード（５年保証）</span><b>${yen(it.obi.guard)}円</b></div>`;
+    html+=`<details><summary>内訳を見る</summary><div class="tbl"><table><thead><tr><th>項目</th><th>国内</th></tr></thead><tbody>`+
+      o.parts.map(p=>`<tr><td>${p[0]}</td><td>${yen(p[1])}</td></tr>`).join("")+
+      `<tr class="sum"><td>国内合計</td><td>${yen(o.total)}</td></tr></tbody></table></div></details>`;
+  } else {
+    const [name,kai,koku,extras,,,guard]=it.row;
+    const sum=extras.reduce((a,b)=>a+b,0), tKai=kai+sum, tKoku=koku+sum;
+    html+=`<h2>${name}<small>${d.cat}</small></h2>`;
+    html+=`<div class="totals">${totalBox("k1","海外合計",tKai)}${totalBox("k2","国内合計",tKoku)}</div>`;
+    html+=`<div class="guard"><span>きららガード（５年保証）</span><b>${yen(guard)}円</b></div>`;
+    let rows=`<tr><td>仕立代</td><td>${yen(kai)}</td><td>${yen(koku)}</td></tr>`;
+    it.cols.forEach((c,i)=>{ if(extras[i]){ rows+=`<tr><td>${c}</td><td>${yen(extras[i])}</td><td>${yen(extras[i])}</td></tr>`; } });
+    rows+=`<tr class="sum"><td>合計</td><td>${yen(tKai)}</td><td>${yen(tKoku)}</td></tr>`;
+    html+=`<details><summary>内訳を見る</summary><div class="tbl"><table><thead><tr><th>項目</th><th>海外</th><th>国内</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+    html+=`</details>`;
+  }
+  if(d.note) html+=`<p class="note">${d.note}</p>`;
+  $("out").innerHTML=`<div class="result">${html}</div>`;
+}
+render();
+</script>
+</body>
+</html>
